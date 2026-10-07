@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffd6e3">
+<title>For You 💌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --rose: #e84a7f;
+    --pink: #ff8fb1;
+    --blush: #ffe3ec;
+    --cream: #fffaf6;
+    --ink: #5a2a3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Quicksand', system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(160deg, #ffd6e3 0%, #ffeef3 45%, #fde2ff 100%);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* floating hearts background */
+  #hearts { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .float-heart { position: absolute; bottom: -50px; animation: rise linear forwards; }
+  @keyframes rise {
+    0%   { transform: translateY(0) rotate(0); opacity: 0; }
+    10%  { opacity: .75; }
+    100% { transform: translateY(-115vh) rotate(var(--r)); opacity: 0; }
+  }
+
+  /* stages */
+  .stage {
+    position: fixed; inset: 0; z-index: 1;
+    display: flex; flex-direction: column;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+    text-align: center;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    opacity: 0; pointer-events: none; transform: scale(.96);
+    transition: opacity .8s ease, transform .8s ease;
+  }
+  .stage.active { opacity: 1; pointer-events: auto; transform: none; }
+  .inner { margin: auto; width: 100%; max-width: 580px; display: flex; flex-direction: column; align-items: center; }
+
+  h1, h2 { font-family: 'Dancing Script', cursive; color: var(--rose); line-height: 1.15; }
+  h1 { font-size: clamp(2.4rem, 9vw, 4rem); }
+  h2 { font-size: clamp(2rem, 7.5vw, 3.2rem); margin-bottom: 10px; }
+  .sub { font-size: 1.1rem; opacity: .85; }
+  .hint { margin-top: 26px; font-size: .95rem; opacity: .75; animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  .btn {
+    font: 700 1.05rem 'Quicksand', sans-serif;
+    border: none; border-radius: 999px; padding: 14px 30px; cursor: pointer;
+    background: var(--rose); color: #fff;
+    box-shadow: 0 8px 22px rgba(232, 74, 127, .35);
+    transition: transform .2s, box-shadow .2s, font-size .3s, padding .3s, opacity .4s;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.ghost { background: #fff; color: var(--rose); box-shadow: 0 6px 16px rgba(232, 74, 127, .18); }
+  .btn.hidden { opacity: 0; pointer-events: none; }
+
+  /* envelope */
+  .envelope-wrap { margin-top: 34px; cursor: pointer; animation: wiggle 2.8s ease-in-out infinite; }
+  .envelope-wrap.opened { animation: none; }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0); }
+    4% { transform: rotate(-5deg); } 8% { transform: rotate(5deg); }
+    12% { transform: rotate(-3deg); } 16% { transform: rotate(0); }
+  }
+  .envelope {
+    position: relative; width: min(300px, 78vw); aspect-ratio: 3 / 2;
+    background: #f7a8c0; border-radius: 8px; perspective: 900px;
+    box-shadow: 0 20px 44px rgba(200, 60, 110, .28);
+  }
+  .envelope .paper {
+    position: absolute; left: 7%; right: 7%; top: 6%; bottom: 8%; z-index: 1;
+    background: var(--cream); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Dancing Script', cursive; font-size: 1.7rem; color: var(--rose);
+    transition: transform .9s cubic-bezier(.2, .9, .3, 1.2) .45s;
+  }
+  .envelope .pocket {
+    position: absolute; inset: 0; z-index: 2; border-radius: 8px;
+    background: #fbc2d3;
+    clip-path: polygon(0 0, 50% 56%, 100% 0, 100% 100%, 0 100%);
+  }
+  .envelope .flap {
+    position: absolute; inset: 0; z-index: 3;
+    background: #f28aab;
+    clip-path: polygon(0 0, 100% 0, 50% 60%);
+    transform-origin: top center;
+    transition: transform .6s ease, z-index 0s .3s;
+  }
+  .envelope .seal {
+    position: absolute; left: 50%; top: 52%; z-index: 4; font-size: 2.6rem;
+    transform: translate(-50%, -50%); transition: opacity .3s, transform .3s;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.15));
+  }
+  .envelope.open .flap { transform: rotateX(180deg); z-index: 0; }
+  .envelope.open .seal { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
+  .envelope.open .paper { transform: translateY(-62%); }
+
+  /* letter */
+  .card {
+    width: 100%; background: rgba(255, 255, 255, .86);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border-radius: 26px; padding: 30px 24px;
+    box-shadow: 0 22px 50px rgba(200, 60, 110, .18);
+  }
+  .letter { min-height: 260px; text-align: left; font-size: 1.1rem; line-height: 1.8; white-space: pre-wrap; }
+  .letter .sign { font-family: 'Dancing Script', cursive; font-size: 1.6rem; color: var(--rose); }
+  .cursor { display: inline-block; width: 2px; height: 1.1em; background: var(--rose); vertical-align: -3px; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .skip-hint { font-size: .8rem; opacity: .5; margin-top: 12px; }
+  @media (max-width: 480px) {
+    .card { padding: 24px 20px; border-radius: 22px; }
+    .letter { font-size: 1.02rem; line-height: 1.7; min-height: 200px; }
+    .sub { font-size: 1rem; }
+    .btn { padding: 13px 26px; }
+    .back { font-size: .85rem; }
+  }
+  .row { display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+
+  /* flip cards */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; margin: 18px 0 8px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: repeat(2, 1fr); } .flip { aspect-ratio: 5 / 4 !important; } }
+  .flip { aspect-ratio: 1; perspective: 800px; cursor: pointer; }
+  .flip-inner { position: relative; width: 100%; height: 100%; transition: transform .7s cubic-bezier(.3, .9, .4, 1.1); transform-style: preserve-3d; }
+  .flip.flipped .flip-inner { transform: rotateY(180deg); }
+  .flip:not(.flipped):hover .flip-inner { transform: rotateY(12deg); }
+  .face {
+    position: absolute; inset: 0; border-radius: 18px; padding: 10px;
+    display: flex; align-items: center; justify-content: center;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    box-shadow: 0 10px 22px rgba(200, 60, 110, .2);
+  }
+  .front { background: linear-gradient(135deg, var(--pink), var(--rose)); font-size: 2.2rem; }
+  .back { background: #fff; transform: rotateY(180deg); font-size: .92rem; font-weight: 600; line-height: 1.4; }
+  .counter { font-size: .9rem; opacity: .7; margin: 6px 0 4px; }
+
+  /* the question */
+  .big-emoji { font-size: clamp(4rem, 18vw, 6.5rem); animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-10px); } }
+  #noBtn { z-index: 20; transition: left .25s ease, top .25s ease, transform .2s; }
+
+  /* final */
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+  .coupon {
+    margin-top: 26px; width: 100%; max-width: 420px; position: relative;
+    background: #fff; border-radius: 18px; padding: 22px 22px 20px;
+    border: 3px dashed var(--pink);
+    box-shadow: 0 16px 36px rgba(200, 60, 110, .2);
+    transform: rotate(-2deg);
+    animation: pop .7s cubic-bezier(.2, 1.4, .4, 1) .6s both;
+  }
+  @keyframes pop { from { transform: rotate(-2deg) scale(.4); opacity: 0; } }
+  .coupon .label { font-weight: 700; letter-spacing: .25em; font-size: .8rem; color: var(--rose); }
+  .coupon .title { font-family: 'Dancing Script', cursive; font-size: 2rem; color: var(--rose); margin: 4px 0 8px; }
+  .coupon .fine { font-size: .8rem; opacity: .6; margin-top: 10px; }
+  .replay { margin-top: 22px; background: none; border: none; color: var(--rose); font: 600 .9rem 'Quicksand'; cursor: pointer; text-decoration: underline; opacity: .7; }
+
+  /* tap sparkles */
+  .spark { position: fixed; pointer-events: none; z-index: 50; font-size: 18px; animation: spark .9s ease-out forwards; }
+  @keyframes spark { to { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .envelope-wrap, .big-emoji, .hint { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="hearts"></div>
+<canvas id="confetti"></canvas>
+
+<!-- 1. Envelope -->
+<section class="stage active" id="s-envelope">
+  <div class="inner">
+    <h1 id="greeting">Hey you…</h1>
+    <p class="sub">I have something for you.</p>
+    <div class="envelope-wrap" id="envWrap">
+      <div class="envelope" id="envelope">
+        <div class="paper">open me 💗</div>
+        <div class="pocket"></div>
+        <div class="flap"></div>
+        <div class="seal">💌</div>
+      </div>
+    </div>
+    <p class="hint">tap the envelope</p>
+  </div>
+</section>
+
+<!-- 2. Letter -->
+<section class="stage" id="s-letter">
+  <div class="inner">
+    <div class="card" id="letterCard">
+      <div class="letter" id="letter"></div>
+      <p class="skip-hint" id="skipHint">(tap to skip ahead)</p>
+    </div>
+    <div class="row">
+      <button class="btn hidden" id="toReasons">there's more →</button>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Flip cards -->
+<section class="stage" id="s-reasons">
+  <div class="inner">
+    <h2>Things I never want to take for granted</h2>
+    <p class="sub">tap each one 💕</p>
+    <div class="grid" id="grid"></div>
+    <p class="counter" id="counter"></p>
+    <div class="row">
+      <button class="btn hidden" id="toAsk">one last thing…</button>
+    </div>
+  </div>
+</section>
+
+<!-- 4. The question -->
+<section class="stage" id="s-ask">
+  <div class="inner">
+    <div class="big-emoji" id="askEmoji">🥺</div>
+    <h2>So… will you forgive me?</h2>
+    <div class="row" id="askRow">
+      <button class="btn" id="yesBtn">Yes 💖</button>
+      <button class="btn ghost" id="noBtn">No</button>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Yay -->
+<section class="stage" id="s-yay">
+  <div class="inner">
+    <div class="big-emoji">🥹</div>
+    <h1>Yaaay!!</h1>
+    <p class="sub" id="yayText"></p>
+    <div class="coupon">
+      <div class="label">🎟️ LOVE COUPON</div>
+      <div class="title" id="couponTitle"></div>
+      <div id="couponBody"></div>
+      <div class="fine">No expiration · Non-transferable · Valid forever</div>
+    </div>
+    <p class="hint">screenshot this and use it anytime 📸</p>
+    <button class="replay" id="replay">watch again</button>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   ✏️  EDIT THIS PART — put in your own names & words
+   ============================================================ */
+const CONFIG = {
+  herName: "Love",
+  yourName: "Drei",
+
+  letter: [
+    "Hi love,",
+    "I know you've been upset with me, and I know I've been stressing you out.",
+    "Maybe this is my way of making you happy? Of making you smile? 🥺 It's been a while since I last made something like this, but here it is.",
+    "I hope you'll feel okay again soon, and I hope I won't stress you out anymore.",
+    "I'm sorry again, love, if I couldn't do much for you lately. But I promise I'll make it up to you once my gout gets better.",
+    "I love you so muchhh, my loveee! You're still the best lovey ever, even when you're masungit to me 😚",
+  ],
+
+  reasons: [
+    { icon: "😊", text: "Your smile fixes my whole day" },
+    { icon: "🌷", text: "How you take care of me" },
+    { icon: "✨", text: "How you make ordinary days feel special" },
+    { icon: "🧸", text: "Your patience with me (even now)" },
+    { icon: "😤", text: "Even your sungit side is cute" },
+    { icon: "💗", text: "You. Just you. Always you." },
+  ],
+
+  yayMessage: "Thank you, love! No more stress, okay? I promise I'll make it up to you. I love you so much!",
+  couponTitle: "A date, anywhere you want",
+  couponBody: "Wherever you want to go, we'll go. Just let me get rid of this gout first 😅 Plus unlimited hugs & kisses 💋",
+};
+/* ============================================================ */
+
+const $ = (s) => document.querySelector(s);
+const fill = (t) => t.replaceAll("{her}", CONFIG.herName).replaceAll("{me}", CONFIG.yourName);
+
+function go(id) {
+  document.querySelectorAll(".stage").forEach((s) => s.classList.toggle("active", s.id === id));
+}
+
+/* ---------- floating hearts ---------- */
+const heartChars = ["💗", "💕", "💖", "🌸", "💞", "❤️"];
+function spawnHeart() {
+  const h = document.createElement("span");
+  h.className = "float-heart";
+  h.textContent = heartChars[Math.floor(Math.random() * heartChars.length)];
+  h.style.left = Math.random() * 100 + "vw";
+  h.style.fontSize = 14 + Math.random() * 22 + "px";
+  h.style.animationDuration = 7 + Math.random() * 7 + "s";
+  h.style.setProperty("--r", (Math.random() * 80 - 40) + "deg");
+  h.addEventListener("animationend", () => h.remove());
+  $("#hearts").appendChild(h);
+}
+setInterval(spawnHeart, 650);
+for (let i = 0; i < 6; i++) setTimeout(spawnHeart, i * 200);
+
+/* ---------- tap sparkles ---------- */
+document.addEventListener("pointerdown", (e) => {
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement("span");
+    s.className = "spark";
+    s.textContent = heartChars[i % heartChars.length];
+    s.style.left = e.clientX - 9 + "px";
+    s.style.top = e.clientY - 9 + "px";
+    const a = (Math.PI * 2 * i) / 6 + Math.random() * .5;
+    const d = 40 + Math.random() * 30;
+    s.style.setProperty("--dx", Math.cos(a) * d + "px");
+    s.style.setProperty("--dy", Math.sin(a) * d + "px");
+    s.addEventListener("animationend", () => s.remove());
+    document.body.appendChild(s);
+  }
+});
+
+/* ---------- 1. envelope ---------- */
+$("#greeting").textContent = `Hey ${CONFIG.herName}…`;
+let opened = false;
+$("#envWrap").addEventListener("click", () => {
+  if (opened) return;
+  opened = true;
+  $("#envWrap").classList.add("opened");
+  $("#envelope").classList.add("open");
+  setTimeout(() => { go("s-letter"); typeLetter(); }, 1700);
+});
+
+/* ---------- 2. typewriter letter ---------- */
+let skip = false;
+function typeInto(el, text) {
+  return new Promise((done) => {
+    const chars = Array.from(text);
+    const node = document.createTextNode("");
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    el.append(node, cursor);
+    let i = 0;
+    (function step() {
+      if (skip) { node.data = text; i = chars.length; }
+      if (i >= chars.length) { cursor.remove(); done(); return; }
+      const ch = chars[i++];
+      node.data += ch;
+      // on small screens, keep the newest line in view while typing
+      const stage = el.closest(".stage");
+      if (stage.scrollHeight > stage.clientHeight) stage.scrollTop = stage.scrollHeight;
+      let d = 38;
+      if (".!?…".includes(ch)) d = 420;
+      else if (ch === ",") d = 200;
+      setTimeout(step, d);
+    })();
+  });
+}
+
+async function typeLetter() {
+  const el = $("#letter");
+  el.innerHTML = "";
+  skip = false;
+  for (const [i, line] of CONFIG.letter.entries()) {
+    await typeInto(el, (i ? "\n\n" : "") + fill(line));
+    if (!skip) await new Promise((r) => setTimeout(r, 350));
+  }
+  const sign = document.createElement("div");
+  sign.className = "sign";
+  sign.textContent = `\n— ${CONFIG.yourName}`;
+  el.appendChild(sign);
+  $("#skipHint").style.visibility = "hidden";
+  $("#toReasons").classList.remove("hidden");
+}
+$("#letterCard").addEventListener("click", () => (skip = true));
+$("#toReasons").addEventListener("click", () => go("s-reasons"));
+
+/* ---------- 3. flip cards ---------- */
+let flippedCount = 0;
+const total = CONFIG.reasons.length;
+function updateCounter() {
+  $("#counter").textContent = flippedCount < total ? `${flippedCount} / ${total}` : "every single one 💕";
+}
+CONFIG.reasons.forEach((r) => {
+  const card = document.createElement("div");
+  card.className = "flip";
+  card.innerHTML = `<div class="flip-inner">
+      <div class="face front">${r.icon}</div>
+      <div class="face back"></div>
+    </div>`;
+  card.querySelector(".back").textContent = r.text;
+  card.addEventListener("click", () => {
+    if (card.classList.contains("flipped")) return;
+    card.classList.add("flipped");
+    flippedCount++;
+    updateCounter();
+    if (flippedCount === total) $("#toAsk").classList.remove("hidden");
+  });
+  $("#grid").appendChild(card);
+});
+updateCounter();
+$("#toAsk").addEventListener("click", () => go("s-ask"));
+
+/* ---------- 4. the runaway "No" button ---------- */
+const noTexts = [
+  "No",
+  "Are you sure?",
+  "Really sure? 🥺",
+  "Think again!",
+  "Pretty please?",
+  "I'll buy you food 🍜",
+  "You're breaking my heart 💔",
+  "Okay fine… yes? 💕",
+];
+const askEmojis = ["🥺", "😢", "😭", "🙏", "🥹", "🍜", "💔", "😳"];
+const noBtn = $("#noBtn");
+const yesBtn = $("#yesBtn");
+let dodges = 0;
+let lastDodge = 0;
+const maxDodges = noTexts.length - 1;
+
+function dodge(e) {
+  if (dodges >= maxDodges) return;
+  e.preventDefault();
+  dodges++;
+  lastDodge = Date.now();
+  noBtn.textContent = noTexts[dodges];
+  $("#askEmoji").textContent = askEmojis[dodges];
+  yesBtn.style.fontSize = 1.05 + dodges * 0.16 + "rem";
+  yesBtn.style.padding = `${14 + dodges * 2}px ${30 + dodges * 5}px`;
+
+  const r = noBtn.getBoundingClientRect();
+  const pad = 16;
+  const maxX = window.innerWidth - r.width - pad;
+  const maxY = window.innerHeight - r.height - pad;
+  let x, y, tries = 0;
+  // pick a spot not right under the finger
+  do {
+    x = pad + Math.random() * Math.max(0, maxX - pad);
+    y = pad + Math.random() * Math.max(0, maxY - pad);
+    tries++;
+  } while (Math.hypot(x - r.left, y - r.top) < 120 && tries < 20);
+  if (noBtn.style.position !== "fixed") {
+    noBtn.style.position = "fixed";
+    noBtn.style.left = r.left + "px";
+    noBtn.style.top = r.top + "px";
+    noBtn.getBoundingClientRect(); // lock start position so it glides
+  }
+  noBtn.style.left = x + "px";
+  noBtn.style.top = y + "px";
+}
+noBtn.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") dodge(e); });
+noBtn.addEventListener("pointerdown", dodge);
+noBtn.addEventListener("click", () => {
+  if (dodges >= maxDodges && Date.now() - lastDodge > 500) sayYes();
+});
+yesBtn.addEventListener("click", sayYes);
+
+/* ---------- 5. yay + heart confetti ---------- */
+function sayYes() {
+  noBtn.style.display = "none";
+  $("#yayText").textContent = fill(CONFIG.yayMessage);
+  $("#couponTitle").textContent = CONFIG.couponTitle;
+  $("#couponBody").textContent = CONFIG.couponBody;
+  go("s-yay");
+  burst();
+  setTimeout(burst, 900);
+  setTimeout(burst, 1900);
+}
+
+const canvas = $("#confetti");
+const ctx = canvas.getContext("2d");
+let particles = [];
+let running = false;
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", resize);
+resize();
+
+function burst() {
+  const cx = innerWidth / 2, cy = innerHeight * 0.4;
+  const emojis = ["💖", "💕", "💗", "❤️", "🌸", "✨", "💞"];
+  for (let i = 0; i < 120; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 4 + Math.random() * 9;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 5,
+      size: 14 + Math.random() * 22,
+      rot: Math.random() * 6, vr: (Math.random() - .5) * .25,
+      ch: emojis[Math.floor(Math.random() * emojis.length)],
+    });
+  }
+  if (!running) { running = true; requestAnimationFrame(tick); }
+}
+function tick() {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  particles = particles.filter((p) => p.y < innerHeight + 60);
+  for (const p of particles) {
+    p.vy += 0.22; p.vx *= 0.99; p.vy *= 0.99;
+    p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.font = `${p.size}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(p.ch, 0, 0);
+    ctx.restore();
+  }
+  if (particles.length) requestAnimationFrame(tick);
+  else { running = false; ctx.clearRect(0, 0, innerWidth, innerHeight); }
+}
+
+/* ---------- replay ---------- */
+$("#replay").addEventListener("click", () => location.reload());
+</script>
+</body>
+</html>
