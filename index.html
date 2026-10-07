@@ -427,9 +427,8 @@ let dodges = 0;
 let lastDodge = 0;
 const maxDodges = noTexts.length - 1;
 
-function dodge(e) {
+function dodge() {
   if (dodges >= maxDodges) return;
-  e.preventDefault();
   dodges++;
   lastDodge = Date.now();
   noBtn.textContent = noTexts[dodges];
@@ -457,12 +456,21 @@ function dodge(e) {
   noBtn.style.left = x + "px";
   noBtn.style.top = y + "px";
 }
-noBtn.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") dodge(e); });
-noBtn.addEventListener("pointerdown", dodge);
-noBtn.addEventListener("click", () => {
-  if (dodges >= maxDodges && Date.now() - lastDodge > 500) sayYes();
+function pressNo() {
+  if (dodges < maxDodges) dodge();
+  else if (Date.now() - lastDodge > 500) sayYes();
+}
+// computer: it runs away as soon as the mouse gets close
+noBtn.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") dodge(); });
+// phone: handle the tap ourselves and cancel it, otherwise the phone
+// "clicks" whatever ends up under her finger (the growing Yes button)
+noBtn.addEventListener("touchstart", (e) => { e.preventDefault(); pressNo(); }, { passive: false });
+noBtn.addEventListener("click", pressNo);
+yesBtn.addEventListener("click", () => {
+  // ignore a tap that was really meant for No a moment ago
+  if (Date.now() - lastDodge < 600) return;
+  sayYes();
 });
-yesBtn.addEventListener("click", sayYes);
 
 /* ---------- 5. yay + heart confetti ---------- */
 function sayYes() {
